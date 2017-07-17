@@ -17,6 +17,34 @@ constexpr double pi() { return M_PI; }
 double deg2rad(double x) { return x * pi() / 180; }
 double rad2deg(double x) { return x * 180 / pi(); }
 
+Eigen::MatrixXd TransformeToVehicleCoord(const vector<double>& ptsx,
+  const vector<double>& ptsy,
+  double world_x,
+  double world_y,double world_psi){
+  // Rotation point matrix
+  // [cos(-a)*rX  -sin(-a)*rY]
+  // [cos(-a)*rY  sin(-a)*rX]
+  //verifying all x,y point list have same size
+  assert(ptsx.size()==ptsy.size());
+
+  int size=ptsx.size();
+  Eigen::VectorXd _dptsx=Eigen::VectorXd(size);
+  Eigen::VectorXd _dptsy=Eigen::VectorXd(size);
+
+  for(int i=0;i<size;i++){
+    //get difference of local and world coordinate
+    double relativeX = ptsx[i]-world_x;
+    double relativeY = ptsy[i]-world_y;
+    
+    _dptsx[i]= (cos(-world_psi)*relativeX - sin(-world_psi)*relativeY);
+    _dptsy[i]= (cos(-world_psi)*relativeY + sin(-world_psi)*relativeX);
+  }
+
+  Eigen::MatrixXd rotatedCoords(size,2);
+  rotatedCoords.col(0)=_dptsx;
+  rotatedCoords.col(1)=_dptsy;
+  return rotatedCoords;
+}
 // Checks if the SocketIO event has JSON data.
 // If there is data the JSON object in string format will be returned,
 // else the empty string "" will be returned.
@@ -91,7 +119,8 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
-
+          // getting steering angle
+          double delta= j[1]["steering_angle"];
           /*
           * TODO: Calculate steering angle and throttle using MPC.
           *
@@ -101,7 +130,7 @@ int main() {
           int pts_size = ptsx.size();
           Eigen::VectorXd waypoints_x = Eigen::VectorXd(pts_size);
           Eigen::VectorXd waypoints_y = Eigen::VectorXd(pts_size);
-
+          
           for (int i = 0; i < pts_size; i++) {
             double shift_x = ptsx[i] - px;
             double shift_y = ptsy[i] - py;
@@ -109,10 +138,24 @@ int main() {
             waypoints_y(i) = cos(psi) * (shift_y) - sin(psi) * (shift_x);
           }
 
-          auto coeffs = polyfit(waypoints_x, waypoints_y, 3);
+          //Conversion to Vehicle Coordinates
+          //1st row contain x points & 2nd row contains y points //rad2deg(delta)
+          Eigen::MatrixXd transformedState = TransformeToVehicleCoord(ptsx,ptsy,px,py,psi);
+
+          auto coeffs = polyfit(transformedState.col(0), transformedState.col(1), 3);
+         // auto coeffs = polyfit(waypoints_x, waypoints_y, 3);
 
           double cte = polyeval(coeffs, 0);
           double epsi = -atan(coeffs[1]);
+
+          //Converting velocity to m/s
+          // auto px1 = px +v *cos(rad2deg(delta))*0.1;
+          // auto py1 = py +v *sin(rad2deg(delta))*0.1;
+          // auto ppsi1 =psi +v/L *cos(rad2deg(delta))*0.1;
+          // auto pv1 =v*0.000277;
+          // auto pcte1= cte-py1+(v *sin(rad2deg(delta))*0.1);
+          // auto pev1= epsi+v/L*;
+
 
           Eigen::VectorXd state(6);
           state << 0, 0, 0, v, cte, epsi;
