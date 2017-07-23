@@ -56,7 +56,7 @@ class FG_eval {
     for (t = 0; t < N; t++) {
       fg[0] += CppAD::pow(vars[cte_start + t] - ref_cte, 2);
       fg[0] += CppAD::pow(vars[epsi_start + t] - ref_epsi, 2);
-      fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
+      fg[0] += CppAD::pow(vars[v_start + t] - ref_v/2, 2);
     }
 
     // Minimize the use of actuators.
@@ -125,6 +125,7 @@ class FG_eval {
 //
 MPC::MPC() {
   steering = 0;
+  acceleration=0;
 }
 MPC::~MPC() {}
 
@@ -244,7 +245,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   // creates a 2 element double vector.
   vector<double> result;
   steering = solution.x[delta_start];
-  double acceleration = solution.x[a_start];
+  acceleration = solution.x[a_start];
   result.push_back(steering);
   result.push_back(acceleration);
 

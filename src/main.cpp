@@ -120,6 +120,8 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+          //Converting velocity to m/s
+          v *= 0.447; // mph to m/s;
           
           
           int pts_size = ptsx.size();
@@ -143,16 +145,16 @@ int main() {
           double cte = polyeval(coeffs, 0);
           double epsi = -atan(coeffs[1]);
 
-          double delta_t = 0.447; // mph to m/s
-          double latency =  0.10; // sec to ms
-          double delta_rad = deg2rad(mpc.steering);
+          double latency =  0.10; // sec to ms ~ dt
+          double angle_psi = mpc.steering;
+
           Eigen::VectorXd state(6);
-          state << cos(mpc.steering)*v*delta_t*latency,//x+1 = x + cos(delta)*dt*latency, and x = 0
-           0, //sin(0)*v*delta_t*latency,   no need to comute pos(y) since sin(0) = 0        
-            ((v/Lf)*delta_rad*delta_t*latency),
-             v,
-              cte + (v*sin(epsi)*delta_t*latency),
-              epsi + ((v/Lf)*delta_rad*delta_t*latency);
+          state << v*cos(angle_psi)*latency,
+           v*sin(angle_psi)*latency,    
+            ((v/Lf)*angle_psi*latency),
+            v + mpc.acceleration*latency,
+            cte + (v*sin(epsi)*latency),
+            epsi + ((v/Lf)*angle_psi*latency);
 
           auto vars = mpc.Solve(state, coeffs);
 
